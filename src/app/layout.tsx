@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Minimalist AI Expense Splitter",
 };
 
+import { CloudSyncProvider } from "@/components/providers/CloudSyncProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +26,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <CloudSyncProvider>
+            {children}
+          </CloudSyncProvider>
         </ThemeProvider>
       </body>
     </html>

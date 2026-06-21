@@ -9,6 +9,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { calculateBalances, calculateSettlement } from '@/lib/algorithm';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { UserMenu } from '@/components/auth/UserMenu';
 
 function SortableGroupCard({ group, onSelect, onMenuAction }: { group: Group, onSelect: () => void, onMenuAction: (action: string, group: Group) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.id });
@@ -159,7 +160,10 @@ export function GroupHome() {
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Splitter ✨</h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1 font-medium">Split expenses with friends easily.</p>
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <UserMenu />
+        </div>
       </header>
 
       <main className="flex-1 px-6 pt-6 space-y-4">

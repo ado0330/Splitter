@@ -6,6 +6,7 @@ import { ExpenseForm } from "./ExpenseForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Plus } from "lucide-react";
+import { UserMenu } from "@/components/auth/UserMenu";
 
 export function ExpenseDashboard() {
   const { groups, activeGroupId, setActiveGroup } = useStore();
@@ -39,6 +40,7 @@ export function ExpenseDashboard() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">{group.members.length} members</p>
           </div>
         </div>
+        <UserMenu />
       </header>
 
       {/* Main Content */}
