@@ -42,7 +42,7 @@ export function CreateGroup({ open, onOpenChange }: CreateGroupProps) {
           placeholder="e.g. Japan Trip ✈️" 
           value={name} 
           onChange={(e) => setName(e.target.value)} 
-          className="text-lg h-14 bg-zinc-50/80 border-transparent focus-visible:ring-zinc-300 focus-visible:bg-white rounded-xl shadow-none"
+          className="text-lg h-14 bg-zinc-50/80 dark:bg-zinc-900/80 border-transparent focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700 focus-visible:bg-white dark:focus-visible:bg-zinc-900 rounded-xl shadow-none"
         />
       </div>
 
@@ -50,10 +50,10 @@ export function CreateGroup({ open, onOpenChange }: CreateGroupProps) {
         <Label htmlFor="members" className="text-zinc-500 font-medium">Members</Label>
         <Input 
           id="members" 
-          placeholder="e.g. ZX CY KM CCLIA" 
+          placeholder="e.g. Alex Ben Chloe David" 
           value={membersStr} 
           onChange={(e) => setMembersStr(e.target.value)} 
-          className="text-lg h-14 bg-zinc-50/80 border-transparent focus-visible:ring-zinc-300 focus-visible:bg-white rounded-xl shadow-none"
+          className="text-lg h-14 bg-zinc-50/80 dark:bg-zinc-900/80 border-transparent focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700 focus-visible:bg-white dark:focus-visible:bg-zinc-900 rounded-xl shadow-none"
         />
         <p className="text-sm text-zinc-400 mt-1">Separate names with spaces or commas.</p>
       </div>
@@ -63,15 +63,15 @@ export function CreateGroup({ open, onOpenChange }: CreateGroupProps) {
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[425px] rounded-2xl p-0 overflow-hidden gap-0 border-zinc-100">
-          <DialogHeader className="px-6 pt-6 pb-2 border-b border-zinc-50">
+        <DialogContent className="sm:max-w-[425px] rounded-2xl p-0 overflow-hidden gap-0 border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+          <DialogHeader className="px-6 pt-6 pb-2 border-b border-zinc-50 dark:border-zinc-800/50">
             <DialogTitle className="text-xl">New Group</DialogTitle>
           </DialogHeader>
           <div className="px-2 max-h-[60vh] overflow-y-auto">
             {FormContent}
           </div>
-          <DialogFooter className="p-4 bg-zinc-50/50 border-t border-zinc-100">
-            <Button onClick={handleSubmit} className="w-full h-12 rounded-xl text-base shadow-none font-medium">
+          <DialogFooter className="p-4 bg-zinc-50/50 dark:bg-zinc-900/50 border-t border-zinc-100 dark:border-zinc-800/50">
+            <Button onClick={handleSubmit} className="w-full h-12 rounded-xl text-base shadow-none font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200">
               Create
             </Button>
           </DialogFooter>
@@ -82,15 +82,15 @@ export function CreateGroup({ open, onOpenChange }: CreateGroupProps) {
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="bg-white border-zinc-100 focus:outline-none">
-        <DrawerHeader className="text-left border-b border-zinc-50 pb-4">
+      <DrawerContent className="bg-white dark:bg-zinc-950 border-zinc-100 dark:border-zinc-800 focus:outline-none">
+        <DrawerHeader className="text-left border-b border-zinc-50 dark:border-zinc-800/50 pb-4">
           <DrawerTitle className="text-2xl font-bold">New Group</DrawerTitle>
         </DrawerHeader>
         <div className="max-h-[80vh] overflow-y-auto py-2">
           {FormContent}
         </div>
-        <DrawerFooter className="pt-2 border-t border-zinc-50 pb-8">
-          <Button onClick={handleSubmit} className="w-full h-14 rounded-xl text-lg font-medium shadow-none">
+        <DrawerFooter className="pt-2 border-t border-zinc-50 dark:border-zinc-800/50 pb-8">
+          <Button onClick={handleSubmit} className="w-full h-14 rounded-xl text-lg font-medium shadow-none bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200">
             Create
           </Button>
         </DrawerFooter>

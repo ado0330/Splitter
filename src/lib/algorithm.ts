@@ -47,7 +47,7 @@ export function calculateBalances(members: Member[], expenses: Expense[]): Balan
           balances[pid].owed += share;
         }
       });
-    } else if (splitType === 'CUSTOM') {
+    } else if (splitType === 'CUSTOM' || splitType === 'ITEMIZED') {
       expense.participantIds.forEach((pid) => {
         if (balances[pid] && expense.customAmounts && expense.customAmounts[pid] !== undefined) {
           balances[pid].owed += expense.customAmounts[pid];

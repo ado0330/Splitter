@@ -17,7 +17,7 @@ export default function Home() {
   if (!mounted) return null;
 
   return (
-    <main className="max-w-md mx-auto min-h-[100dvh] bg-white shadow-xl shadow-zinc-200/50 flex flex-col relative overflow-hidden">
+    <main className="max-w-md mx-auto min-h-[100dvh] bg-white dark:bg-zinc-950 shadow-xl shadow-zinc-200/50 dark:shadow-black/20 flex flex-col relative overflow-hidden transition-colors">
       {activeGroupId ? <ExpenseDashboard /> : <GroupHome />}
     </main>
   );

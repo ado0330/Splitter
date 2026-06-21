@@ -6,7 +6,8 @@ export interface Member {
   name: string;
 }
 
-export type SplitType = 'EQUAL' | 'CUSTOM';
+export type SplitType = 'EQUAL' | 'CUSTOM' | 'ITEMIZED';
+
 
 export interface Expense {
   id: string;
@@ -17,10 +18,12 @@ export interface Expense {
   splitType?: SplitType;
   customAmounts?: Record<string, number>;
   baseCustomAmounts?: Record<string, number>;
+  receiptItems?: import('./../lib/extractor').ReceiptItem[];
   additionalChargesMode?: 'NONE' | 'PERCENT' | 'RM';
   serviceChargePct?: number;
   taxPct?: number;
   extraChargesAmount?: number;
+  isPayment?: boolean;
   createdAt: Date;
 }
 
@@ -29,6 +32,7 @@ export interface Group {
   name: string;
   members: Member[];
   expenses: Expense[];
+  isPinned?: boolean;
   createdAt: Date;
 }
 
@@ -42,10 +46,13 @@ interface AppState {
   renameGroup: (id: string, newName: string) => void;
   deleteGroup: (id: string) => void;
   duplicateGroup: (id: string, newName: string) => void;
+  togglePinGroup: (id: string) => void;
+  reorderGroups: (activeId: string, overId: string) => void;
   
+
   // Expense actions
-  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'>) => void;
-  addExpenses: (expenses: Omit<Expense, 'id' | 'createdAt'>[]) => void;
+  addExpense: (expense: Omit<Expense, 'id' | 'createdAt'> & { createdAt?: Date }) => void;
+  addExpenses: (expenses: (Omit<Expense, 'id' | 'createdAt'> & { createdAt?: Date })[]) => void;
   updateExpense: (id: string, expense: Partial<Expense>) => void;
   removeExpense: (id: string) => void;
 }
@@ -71,7 +78,7 @@ export const useStore = create<AppState>()(
           createdAt: new Date(),
         };
         set((state) => ({
-          groups: [...state.groups, newGroup],
+          groups: [newGroup, ...state.groups],
           activeGroupId: newGroup.id,
         }));
       },
@@ -108,10 +115,47 @@ export const useStore = create<AppState>()(
           };
           
           return {
-            groups: [...state.groups, newGroup],
+            groups: [newGroup, ...state.groups],
           };
         });
       },
+
+      togglePinGroup: (id) => {
+        set((state) => {
+          const groupIndex = state.groups.findIndex(g => g.id === id);
+          if (groupIndex === -1) return state;
+          const group = state.groups[groupIndex];
+          const newGroups = [...state.groups];
+          newGroups.splice(groupIndex, 1);
+          if (!group.isPinned) {
+            newGroups.unshift({ ...group, isPinned: true });
+          } else {
+            const unpinnedIndex = newGroups.findIndex(g => !g.isPinned);
+            const targetIndex = unpinnedIndex === -1 ? newGroups.length : unpinnedIndex;
+            newGroups.splice(targetIndex, 0, { ...group, isPinned: false });
+          }
+          return { groups: newGroups };
+        });
+      },
+
+      reorderGroups: (activeId, overId) => {
+        set((state) => {
+          const oldIndex = state.groups.findIndex(g => g.id === activeId);
+          const newIndex = state.groups.findIndex(g => g.id === overId);
+          if (oldIndex === -1 || newIndex === -1) return state;
+          
+          const activeGroup = state.groups[oldIndex];
+          const overGroup = state.groups[newIndex];
+          if (!!activeGroup.isPinned !== !!overGroup.isPinned) return state;
+          
+          const newGroups = [...state.groups];
+          const [movedGroup] = newGroups.splice(oldIndex, 1);
+          newGroups.splice(newIndex, 0, movedGroup);
+          
+          return { groups: newGroups };
+        });
+      },
+
 
       addExpense: (expense) => {
         set((state) => {
@@ -119,7 +163,7 @@ export const useStore = create<AppState>()(
           const newExpense: Expense = {
             ...expense,
             id: crypto.randomUUID(),
-            createdAt: new Date(),
+            createdAt: expense.createdAt || new Date(),
           };
           return {
             groups: state.groups.map(g => 
@@ -137,7 +181,7 @@ export const useStore = create<AppState>()(
           const newExpenses: Expense[] = expenses.map(e => ({
             ...e,
             id: crypto.randomUUID(),
-            createdAt: new Date(),
+            createdAt: e.createdAt || new Date(),
           }));
           return {
             groups: state.groups.map(g => 

@@ -37,7 +37,7 @@ export function SmartInput() {
         <h2 className="text-sm font-medium">Smart Input</h2>
       </div>
       <Textarea
-        placeholder="14/6 Grab去 - 10 zx&#10;小猪先生 - 51 zx&#10;冰 - 17.9 zx&#10;Grab回 - 9 zx&#10;除3"
+        placeholder="14/6 Grab - 10 Alex&#10;Dinner - 51 Jason&#10;Drinks - 17.9 Sarah&#10;Grab return - 9 Alex&#10;Split all"
         value={text}
         onChange={(e) => setText(e.target.value)}
         className="min-h-[140px] resize-none bg-white border-zinc-200 text-[15px] leading-relaxed rounded-xl shadow-sm"
