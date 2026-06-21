@@ -6,18 +6,23 @@ export type ReceiptItem = {
   participants: string[];
 };
 
+export interface ReceiptExtractionResult {
+  items: ReceiptItem[];
+  total?: number | null;
+}
+
 export interface ReceiptItemExtractor {
-  extract(image: File): Promise<ReceiptItem[]>;
+  extract(image: File): Promise<ReceiptExtractionResult>;
 }
 
 // V1 Stub Implementation
 export class ManualExtractor implements ReceiptItemExtractor {
-  async extract(_image: File): Promise<ReceiptItem[]> {
+  async extract(_image: File): Promise<ReceiptExtractionResult> {
     // For V1, we return an empty array or a single dummy item 
     // to allow the user to manually enter the items via the UI.
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve([]);
+        resolve({ items: [] });
       }, 800); // Simulate network delay
     });
   }
@@ -69,7 +74,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 export class GeminiExtractor implements ReceiptItemExtractor {
-  async extract(image: File): Promise<ReceiptItem[]> {
+  async extract(image: File): Promise<ReceiptExtractionResult> {
     try {
       const base64Data = await fileToBase64(image);
       const mimeType = image.type;
@@ -84,14 +89,14 @@ export class GeminiExtractor implements ReceiptItemExtractor {
 
       if (!response.ok) {
         console.error("Backend extraction failed");
-        return [];
+        return { items: [] };
       }
 
       const data = await response.json();
       const rawItems = data.items || [];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return rawItems.map((item: any) => ({
+      let items = rawItems.map((item: any) => ({
         id: crypto.randomUUID(),
         name: item.name || "Unknown Item",
         unitPrice: parseFloat(item.unitPrice) || 0,
@@ -99,9 +104,24 @@ export class GeminiExtractor implements ReceiptItemExtractor {
         participants: [] // Users will select participants in UI
       }));
 
+      // Post-processing: remove obvious non-food items that AI mistakenly included
+      items = items.filter((item: ReceiptItem) => {
+        const lowerName = item.name.toLowerCase();
+        // If it looks like a tax, service charge, rounding, or total line, drop it
+        if (/\b(tax|sst|gst|vat|service charge|s\.c\.|svc|rounding|round|total|change|cash|visa|mastercard|balance|amount due|net)\b/i.test(lowerName)) {
+          return false;
+        }
+        return true;
+      });
+
+      return {
+        items,
+        total: data.total
+      };
+
     } catch (err) {
       console.error("Failed to parse receipt", err);
-      return [];
+      return { items: [] };
     }
   }
 }

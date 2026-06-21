@@ -37,6 +37,23 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
   const [serviceChargePct, setServiceChargePct] = useState("");
   const [taxPct, setTaxPct] = useState("");
   const [extraChargesAmount, setExtraChargesAmount] = useState("");
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) setIsInputFocused(true);
+    };
+    const handleFocusOut = (e: FocusEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) setIsInputFocused(false);
+    };
+    
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
 
   useEffect(() => {
     if (open && group) {
@@ -123,10 +140,45 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
       finalCustomAmounts = {};
       finalBaseCustomAmounts = {};
       
+      const exactCustoms: Record<string, number> = {};
+      let sumRounded = 0;
+      
       for (const id of participantIds) {
         const base = evaluateMath(baseCustomAmounts[id] || "");
         finalBaseCustomAmounts[id] = base;
-        finalCustomAmounts[id] = parsedAmount * (base / subtotal);
+        
+        const exact = parsedAmount * (base / subtotal);
+        exactCustoms[id] = exact;
+        
+        const rounded = Math.round(exact * 100) / 100;
+        finalCustomAmounts[id] = rounded;
+        sumRounded += rounded;
+      }
+      
+      const targetAmount = Math.round(parsedAmount * 100) / 100;
+      const diffCents = Math.round((targetAmount - sumRounded) * 100);
+      
+      if (diffCents !== 0) {
+        const remainders = participantIds.map(id => ({
+          id,
+          remainder: exactCustoms[id] - finalCustomAmounts![id]
+        }));
+        
+        if (diffCents > 0) {
+          remainders.sort((a, b) => b.remainder - a.remainder);
+          for (let i = 0; i < diffCents; i++) {
+            finalCustomAmounts![remainders[i % remainders.length].id] += 0.01;
+          }
+        } else {
+          remainders.sort((a, b) => a.remainder - b.remainder);
+          for (let i = 0; i < Math.abs(diffCents); i++) {
+            finalCustomAmounts![remainders[i % remainders.length].id] -= 0.01;
+          }
+        }
+      }
+      
+      for (const id of participantIds) {
+        finalCustomAmounts![id] = Math.round(finalCustomAmounts![id] * 100) / 100;
       }
     }
 
@@ -217,7 +269,7 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
             <button
               key={m.id}
               onClick={() => setPayerId(m.id)}
-              className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
+              className={`px-4 py-2 min-h-[44px] rounded-xl text-[14px] font-medium transition-colors ${
                 payerId === m.id 
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-md shadow-zinc-900/10 dark:shadow-black/20" 
                   : "bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
@@ -232,27 +284,27 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
       <div className="space-y-2 pb-2">
         <div className="flex items-center justify-between">
           <Label className="text-zinc-500 font-medium">Split Between</Label>
-          <button onClick={toggleAll} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider">
+          <button onClick={toggleAll} className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider min-h-[36px] px-2 -mr-2 rounded-lg">
             {participantIds.length === group.members.length ? "Deselect All" : "Select All"}
           </button>
         </div>
 
-        <div className="flex gap-2 p-1 bg-zinc-100/80 dark:bg-zinc-900/80 rounded-lg">
+        <div className="flex gap-2 p-1 bg-zinc-100/80 dark:bg-zinc-900/80 rounded-xl">
           <button 
             onClick={() => setSplitType('EQUAL')}
-            className={`flex-1 py-1 text-[12px] font-bold rounded-md transition-all ${splitType === 'EQUAL' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+            className={`flex-1 py-2 min-h-[44px] text-[14px] font-bold rounded-lg transition-all ${splitType === 'EQUAL' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
           >
             Equal
           </button>
           <button 
             onClick={() => setSplitType('CUSTOM')}
-            className={`flex-1 py-1 text-[12px] font-bold rounded-md transition-all ${splitType === 'CUSTOM' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+            className={`flex-1 py-2 min-h-[44px] text-[14px] font-bold rounded-lg transition-all ${splitType === 'CUSTOM' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
           >
             Custom
           </button>
           <button 
             onClick={() => setSplitType('ITEMIZED')}
-            className={`flex-1 py-1 text-[12px] font-bold rounded-md transition-all ${splitType === 'ITEMIZED' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+            className={`flex-1 py-2 min-h-[44px] text-[14px] font-bold rounded-lg transition-all ${splitType === 'ITEMIZED' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
           >
             Receipt
           </button>
@@ -265,15 +317,27 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
               initialItems={receiptItems} 
               onChange={(items, baseAmounts) => {
                 setReceiptItems(items);
-                const strBaseAmounts: Record<string, string> = {};
-                for (const [k, v] of Object.entries(baseAmounts)) {
-                  strBaseAmounts[k] = v.toFixed(2);
-                }
-                setBaseCustomAmounts(strBaseAmounts);
+                setBaseCustomAmounts(baseAmounts);
                 // Also automatically select participants that have an amount
-                const activeIds = Object.entries(baseAmounts).filter(([, v]) => v > 0).map(([k]) => k);
+                const activeIds = Object.entries(baseAmounts).filter(([, v]) => evaluateMath(v) > 0).map(([k]) => k);
                 setParticipantIds(activeIds);
               }} 
+              onExtractedMetadata={(metadata) => {
+                if (metadata.total !== undefined && metadata.total !== null) {
+                  setAmount(metadata.total.toString());
+                  
+                  // Auto-balance: if items don't perfectly sum to total, dump the difference into extra charges.
+                  // This elegantly handles Tax (positive diff) AND Discounts/Rounding (negative diff) automatically!
+                  const diff = metadata.total - metadata.itemsSum;
+                  if (Math.abs(diff) > 0.01) {
+                    setAdditionalChargesMode('RM');
+                    setExtraChargesAmount(diff.toFixed(2));
+                  } else {
+                    setAdditionalChargesMode('NONE');
+                    setExtraChargesAmount("");
+                  }
+                }
+              }}
             />
           </div>
         )}
@@ -286,14 +350,14 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
               <div key={m.id} id={`participant-row-${m.id}`} className={splitType === 'CUSTOM' ? "flex items-center gap-2" : ""}>
                 <button
                   onClick={() => toggleParticipant(m.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all active:scale-[0.98] ${
+                  className={`flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-xl text-[14px] font-medium transition-all active:scale-[0.98] ${
                     isSelected 
                       ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-500/30 shadow-sm" 
                       : "bg-white dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 border border-zinc-200 dark:border-zinc-800"
-                  } ${splitType === 'CUSTOM' ? "flex-1 justify-start h-10" : ""}`}
+                  } ${splitType === 'CUSTOM' ? "flex-1 justify-start h-12" : ""}`}
                 >
-                  <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors shrink-0 ${isSelected ? "border-emerald-500 bg-emerald-500 text-white" : "border-zinc-300"}`}>
-                    {isSelected && <svg className="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors shrink-0 ${isSelected ? "border-emerald-500 bg-emerald-500 text-white" : "border-zinc-300"}`}>
+                    {isSelected && <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none"><path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   {m.name}
                 </button>
@@ -314,7 +378,7 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
                           }
                         }, 300);
                       }}
-                      className="pl-8 pr-2 h-10 text-[16px] bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 font-semibold focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 dark:focus-visible:border-emerald-500"
+                      className="pl-8 pr-2 h-12 rounded-xl text-[16px] bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 font-semibold focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500 dark:focus-visible:border-emerald-500"
                     />
                     {/[+\-*/()]/.test(baseCustomAmounts[m.id] || "") && (
                       <div className="absolute -bottom-4 right-1 text-[10px] font-bold text-emerald-600">
@@ -333,18 +397,18 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
           <div className="mt-4 space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-zinc-500 font-medium">Additional Charges</Label>
-              <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-md p-0.5">
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-lg p-1 gap-1">
                 <button 
                   onClick={() => setAdditionalChargesMode('NONE')}
-                  className={`px-2.5 py-0.5 text-[10px] font-bold rounded uppercase transition-colors ${additionalChargesMode === 'NONE' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                  className={`px-3 py-1.5 min-h-[36px] text-[11px] font-bold rounded-md uppercase transition-colors ${additionalChargesMode === 'NONE' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                 >None</button>
                 <button 
                   onClick={() => setAdditionalChargesMode('PERCENT')}
-                  className={`px-2.5 py-0.5 text-[10px] font-bold rounded uppercase transition-colors ${additionalChargesMode === 'PERCENT' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                  className={`px-3 py-1.5 min-h-[36px] text-[11px] font-bold rounded-md uppercase transition-colors ${additionalChargesMode === 'PERCENT' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                 >%</button>
                 <button 
                   onClick={() => setAdditionalChargesMode('RM')}
-                  className={`px-2.5 py-0.5 text-[10px] font-bold rounded uppercase transition-colors ${additionalChargesMode === 'RM' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                  className={`px-3 py-1.5 min-h-[36px] text-[11px] font-bold rounded-md uppercase transition-colors ${additionalChargesMode === 'RM' ? 'bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
                 >RM</button>
               </div>
             </div>
@@ -353,11 +417,11 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
               <div className="flex gap-2">
                 <div className="flex-1 space-y-1.5">
                   <Label className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Service Charge (%)</Label>
-                  <Input type="text" placeholder="10" value={serviceChargePct} onChange={e => setServiceChargePct(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none h-10 text-[13px]" />
+                  <Input type="text" placeholder="10" value={serviceChargePct} onChange={e => setServiceChargePct(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none h-12 rounded-xl text-[14px]" />
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <Label className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Tax (%)</Label>
-                  <Input type="text" placeholder="6" value={taxPct} onChange={e => setTaxPct(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none h-10 text-[13px]" />
+                  <Input type="text" placeholder="6" value={taxPct} onChange={e => setTaxPct(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none h-12 rounded-xl text-[14px]" />
                 </div>
               </div>
             )}
@@ -366,7 +430,7 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
               <div className="space-y-1.5 pb-2">
                 <Label className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Extra Charges (RM)</Label>
                 <div className="relative">
-                  <Input type="text" placeholder="0.00 or 10+5" value={extraChargesAmount} onChange={e => setExtraChargesAmount(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none h-10 text-[13px]" />
+                  <Input type="text" placeholder="0.00 or 10+5" value={extraChargesAmount} onChange={e => setExtraChargesAmount(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 shadow-none h-12 rounded-xl text-[14px]" />
                   {/[+\-*/()]/.test(extraChargesAmount) && (
                     <div className="absolute -bottom-4 right-1 text-[10px] font-bold text-emerald-600">
                       = {evaluateMath(extraChargesAmount).toFixed(2)}
@@ -431,12 +495,12 @@ export function ExpenseForm({ open, onOpenChange, expenseToEdit }: ExpenseFormPr
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
+    <Drawer open={open} onOpenChange={onOpenChange} dismissible={!isInputFocused}>
       <DrawerContent className="bg-white dark:bg-zinc-950 border-zinc-100 dark:border-zinc-800 focus:outline-none">
         <DrawerHeader className="text-left border-b border-zinc-50 dark:border-zinc-800/50 pb-3">
           <DrawerTitle className="text-xl font-bold">{expenseToEdit ? "Edit Expense" : "New Expense"}</DrawerTitle>
         </DrawerHeader>
-        <div className="max-h-[85vh] overflow-y-auto py-2">
+        <div className="max-h-[85vh] overflow-y-auto py-2" data-vaul-no-drag>
           {formContent}
         </div>
         <DrawerFooter className="pt-2 border-t border-zinc-50 dark:border-zinc-800/50 pb-6">

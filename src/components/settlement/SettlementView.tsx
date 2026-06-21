@@ -242,20 +242,7 @@ export function SettlementView() {
 
       {showDetails && (
         <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-          {/* Net Balance */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Net Balance</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {actualBalances.map(b => (
-                <div key={b.memberId} className="p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-100 dark:border-zinc-800/50 flex flex-col gap-1">
-                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{b.name}</span>
-                  <span className={`text-lg font-bold ${b.net > 0 ? 'text-emerald-500 dark:text-emerald-400' : b.net < 0 ? 'text-red-500 dark:text-red-400' : 'text-zinc-400 dark:text-zinc-600'}`}>
-                    {b.net > 0 ? '+' : ''}{b.net.toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
+
           
           {/* Stats Summary */}
           <section className="space-y-4">

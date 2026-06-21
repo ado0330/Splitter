@@ -23,15 +23,23 @@ export async function POST(request: Request) {
           {
             parts: [
               {
-                text: `You are an expert OCR receipt parser. Extract the food/drink items from this receipt. 
-Return ONLY a valid JSON array of objects. Do not wrap it in markdown block quotes like \`\`\`json.
-Each object must have the exact following structure:
+                text: `You are an expert OCR receipt parser. Extract the food/drink items and bill totals from this receipt.
+Return ONLY a valid JSON object. Do not wrap it in markdown block quotes like \`\`\`json.
+The JSON object must have the exact following structure:
 {
-  "name": "Name of the item",
-  "unitPrice": <number>,
-  "quantity": <number>
+  "items": [
+    {
+      "name": "Name of the item",
+      "unitPrice": <number>,
+      "quantity": <number>
+    }
+  ],
+  "total": <number | null>
 }
-Ignore subtotals, tax, service charge, and total amounts. Only extract the individual items purchased.`
+
+CRITICAL RULES:
+1. Do NOT include subtotals, tax, service charge, rounding, or total amounts in the "items" array. The "items" array must ONLY contain actual purchased goods/services.
+2. For "total", look for GRAND TOTAL, TOTAL, NET TOTAL, or AMOUNT DUE in that priority order. Use the final receipt total.`
               },
               {
                 inline_data: {
@@ -62,16 +70,20 @@ Ignore subtotals, tax, service charge, and total amounts. Only extract the indiv
       return NextResponse.json({ items: [] });
     }
 
-    let rawItems = JSON.parse(textContent);
-    if (!Array.isArray(rawItems)) {
-      if (rawItems.items && Array.isArray(rawItems.items)) {
-        rawItems = rawItems.items;
-      } else {
-        rawItems = [rawItems];
-      }
+    const parsed = JSON.parse(textContent);
+    let rawItems = [];
+    if (Array.isArray(parsed)) {
+      rawItems = parsed;
+    } else if (parsed.items && Array.isArray(parsed.items)) {
+      rawItems = parsed.items;
+    } else {
+      rawItems = [parsed];
     }
 
-    return NextResponse.json({ items: rawItems });
+    return NextResponse.json({
+      items: rawItems,
+      total: parsed.total ?? null
+    });
   } catch (error) {
     console.error("API route error:", error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

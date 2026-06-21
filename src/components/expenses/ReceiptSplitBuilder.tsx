@@ -9,28 +9,46 @@ import { Plus, Trash2, Camera, Loader2, Receipt } from "lucide-react";
 interface ReceiptSplitBuilderProps {
   members: Member[];
   initialItems?: ReceiptItem[];
-  onChange: (items: ReceiptItem[], baseCustomAmounts: Record<string, number>) => void;
+  onChange: (items: ReceiptItem[], baseCustomAmounts: Record<string, string>) => void;
+  onExtractedMetadata?: (metadata: {
+    total?: number | null;
+    itemsSum: number;
+  }) => void;
 }
 
-export function ReceiptSplitBuilder({ members, initialItems = [], onChange }: ReceiptSplitBuilderProps) {
+export function ReceiptSplitBuilder({ members, initialItems = [], onChange, onExtractedMetadata }: ReceiptSplitBuilderProps) {
   const [items, setItems] = useState<ReceiptItem[]>(initialItems);
   const [isExtracting, setIsExtracting] = useState(false);
 
   // Calculate and trigger onChange whenever items change
   useEffect(() => {
-    const baseAmounts: Record<string, number> = {};
-    members.forEach(m => { baseAmounts[m.id] = 0; });
-
+    const expressions: Record<string, string[]> = {};
+    members.forEach(m => { expressions[m.id] = []; });
+    
     items.forEach(item => {
       if (item.participants.length > 0 && item.unitPrice > 0 && item.quantity > 0) {
         const itemTotal = item.unitPrice * item.quantity;
-        const share = itemTotal / item.participants.length;
+        const count = item.participants.length;
         
         item.participants.forEach(pid => {
-          if (baseAmounts[pid] !== undefined) {
-            baseAmounts[pid] += share;
+          if (expressions[pid]) {
+            if (count === 1) {
+              expressions[pid].push(`${itemTotal}`);
+            } else {
+              expressions[pid].push(`${itemTotal}/${count}`);
+            }
           }
         });
+      }
+    });
+
+    const baseAmounts: Record<string, string> = {};
+    members.forEach(m => {
+      const parts = expressions[m.id];
+      if (parts.length > 0) {
+        baseAmounts[m.id] = parts.join('+');
+      } else {
+        baseAmounts[m.id] = "";
       }
     });
 
@@ -45,10 +63,18 @@ export function ReceiptSplitBuilder({ members, initialItems = [], onChange }: Re
     setIsExtracting(true);
     try {
       const extractor = new GeminiExtractor();
-      const extractedItems = await extractor.extract(file);
+      const extracted = await extractor.extract(file);
       
-      if (extractedItems.length > 0) {
-        setItems(prev => [...prev, ...extractedItems]);
+      if (extracted.items.length > 0) {
+        const newItems = [...items, ...extracted.items];
+        setItems(newItems);
+        if (onExtractedMetadata) {
+          const itemsSum = newItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+          onExtractedMetadata({
+            total: extracted.total,
+            itemsSum
+          });
+        }
       } else {
         addItem();
         alert("Could not extract items from receipt. Please add manually.");
@@ -146,16 +172,16 @@ export function ReceiptSplitBuilder({ members, initialItems = [], onChange }: Re
                   placeholder="Item Name (e.g., Chicken Pot)" 
                   value={item.name}
                   onChange={e => updateItem(item.id, { name: e.target.value })}
-                  className="h-9 text-[13px] font-medium bg-zinc-50/50 dark:bg-zinc-950/50 border-transparent focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700 focus-visible:bg-white dark:focus-visible:bg-zinc-950 shadow-none text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+                  className="h-12 text-[14px] font-medium bg-zinc-50/50 dark:bg-zinc-950/50 border-transparent focus-visible:ring-zinc-300 dark:focus-visible:ring-zinc-700 focus-visible:bg-white dark:focus-visible:bg-zinc-950 shadow-none text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 rounded-xl"
                 />
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={() => removeItem(item.id)}
-                className="h-9 w-9 text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 -mr-1"
+                className="h-12 w-12 rounded-xl text-zinc-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 -mr-1"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-5 h-5" />
               </Button>
             </div>
 
@@ -167,7 +193,7 @@ export function ReceiptSplitBuilder({ members, initialItems = [], onChange }: Re
                   placeholder="0.00" 
                   value={item.unitPrice || ""}
                   onChange={e => updateItem(item.id, { unitPrice: parseFloat(e.target.value) || 0 })}
-                  className="h-9 text-[13px] font-semibold bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-none text-zinc-900 dark:text-zinc-100"
+                  className="h-12 rounded-xl text-[14px] font-semibold bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-none text-zinc-900 dark:text-zinc-100"
                 />
               </div>
               <div className="w-20 space-y-1">
@@ -177,27 +203,38 @@ export function ReceiptSplitBuilder({ members, initialItems = [], onChange }: Re
                   placeholder="1" 
                   value={item.quantity || ""}
                   onChange={e => updateItem(item.id, { quantity: parseInt(e.target.value) || 0 })}
-                  className="h-9 text-[13px] font-semibold text-center bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-none text-zinc-900 dark:text-zinc-100"
+                  className="h-12 rounded-xl text-[14px] font-semibold text-center bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-none text-zinc-900 dark:text-zinc-100"
                 />
               </div>
               <div className="flex-1 space-y-1">
                 <Label className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider pl-1 text-right block">Total</Label>
-                <div className="h-9 flex items-center justify-end px-3 bg-zinc-100/50 dark:bg-zinc-800/50 border border-transparent rounded-md text-[13px] font-bold text-zinc-700 dark:text-zinc-300">
+                <div className="h-12 flex items-center justify-end px-3 bg-zinc-100/50 dark:bg-zinc-800/50 border border-transparent rounded-xl text-[14px] font-bold text-zinc-700 dark:text-zinc-300">
                   RM {((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2)}
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-              <Label className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium mb-2 block">Shared By ({item.participants.length})</Label>
-              <div className="flex flex-wrap gap-1.5">
+            <div className="pt-2 mt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium block">Shared By ({item.participants.length})</Label>
+                <button 
+                  onClick={() => {
+                    const isAllSelected = item.participants.length === members.length;
+                    updateItem(item.id, { participants: isAllSelected ? [] : members.map(m => m.id) });
+                  }}
+                  className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider min-h-[36px] px-2 -mr-2 rounded-lg"
+                >
+                  {item.participants.length === members.length ? "Deselect All" : "Select All"}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 {members.map(m => {
                   const isSelected = item.participants.includes(m.id);
                   return (
                     <button
                       key={m.id}
                       onClick={() => toggleParticipant(item.id, m.id)}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all active:scale-95 ${
+                      className={`px-4 py-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[14px] font-semibold transition-all active:scale-95 ${
                         isSelected 
                           ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-md shadow-zinc-900/10 dark:shadow-black/20" 
                           : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
